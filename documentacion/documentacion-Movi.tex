@@ -1,0 +1,378 @@
+\documentclass[11pt]{scrartcl}
+
+%\usepackage{sectsty}
+%\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{amssymb, amsmath}
+
+% Margins
+\topmargin=-0.45in
+\evensidemargin=0in
+\oddsidemargin=0in
+\textwidth=6.5in
+\textheight=9.0in
+\headsep=0.25in
+
+\title{MoviScript}
+\subtitle{Lenguaje especifico de dominio para programar m\'oviles}
+
+\author{ Pablo Dobry }
+\date{\today}
+
+\begin{document}
+\lstset{language=Haskell}
+\maketitle	
+\pagebreak
+
+\section{Descripci\'on general}
+
+El lenguaje MoviScript es un lenguaje especifico de dominio (DSL) orientado a la 
+programaci\'on de m\'oviles como el recorrido de pequeños autos eléctricos 
+programables y robots. Este lenguaje tiene la finalidad de facilitar 
+la programación de la movilidad, ofreciendo una sintaxis intuitiva 
+y funcionalidades específicas para abordar los desafíos asociados con estos dispositivos.
+Este DSL está diseñado para simplificar tareas comunes en la programación del desplazamiento, 
+promoviendo un desarrollo eficiente.\newline
+Este lenguaje cuenta con comandos clasicos de un lenguaje imperativo, como la posiblidad 
+de operar sobre expresiones matem\'aticas y booleanas, condicionales y bucles.
+Cuenta con instrucciones espec\'ificas de la programaci\'on de m\'oviles como 
+la posiblidad de generar generar una lista de puntos en funci\'on de una expresi\'on 
+matem\'atica y una lista de puntos donde evaluarla.\newline
+Cuenta con instrucciones para el seguimiento de un camino (una lista de puntos), como as\'i tambi\'en
+la posiblidad de que, en caso de verse impedido el avance del m\'ovil elabore 
+un plan de contingencia para poder llegar al siguiente punto del camino.\newline
+La implementaci\'on de un lenguaje, el DSL se construye directamente embebido 
+dentro de Haskell, utilizando sus funcionalidades como base.
+Luego, se emplea la biblioteca Parsec de Haskell para llevar a cabo 
+el análisis sint\'actico del c\'odigo fuente del DSL.  \newline
+Una vez completado el paso de parseo, se procede a la construcción de un 
+\'Arbol de Sintaxis Abstracta (AST). Este \'arbol representa 
+la estructura jerárquica del c\'odigo fuente y sirve como una 
+representaci\'on interna que facilita la manipulaci\'on y evaluación del c\'odigo.\newline
+Finalmente, para la evaluación semántica del DSL, se recurre a un evaluador mon\'adico. 
+Las m\'onadas en Haskell ofrecen un mecanismo para modelar c\'omputos con efectos 
+secundarios, lo que resulta esencial para la interpretación y ejecuci\'on 
+de expresiones en nuestro lenguaje.\newline
+
+\pagebreak
+\section{Manual de uso}
+El lenguaje Movi esta embebido en Haskell por lo que para compilar el lenguaje MoviScript 
+se deber\'a tener instalado un compilador de Haskell. Con ghci para su uso se deber\'a 
+ejecutar el siguiente comando en la carpeta en la que se encuentran los archivos Main.hs,
+Parser.hs y EvalMovi.hs:
+\begin{lstlisting}[language=bash]
+    ghci Main.hs miPrograma.movi
+\end{lstlisting}
+De esta forma se ejecuta el programa $miPrograma.movi$. La ejecuci\'on en esta primer versi\'on de 
+MoviScript producir\'a una salida en pantalla con las primitivas ejecutadas por el m\'ovil y la traza
+ con los puntos por los que pas\'o el m\'ovil.
+ Se debe tener instalado ucblogo para poder ejecutar el script en logo con el que se evalua el 
+ programa en esta version. Para hacerlo se puede ejecutar en una distribucion Debian o Ubuntu el siguiente comando:
+ \begin{lstlisting}[language=bash]
+    apt-get install ucblogo
+\end{lstlisting}
+
+\section{Expresiones flotantes}
+El lenguaje incorpora funciones trigonom\'etricas 
+(seno, coseno, tangente), logaritmo, redondeo hacia abajo (floor) 
+y redondeo hacia arriba (ceil), ofreciendo as\'i una amplia gama de herramientas 
+matem\'aticas. La inclusi\'on de funciones especializadas como 
+la exponencial y el redondeo a un entero mediante la 
+función 'round' brinda flexibilidad a los desarrolladores para 
+expresar de manera eficiente y concisa operaciones 
+matemáticas complejas. Esta sintaxis proporciona una base 
+robusta para la manipulación de c\'alculos num\'ericos en 
+el contexto de programación de m\'oviles.\newline
+La sintaxis del lenguaje es simple y se describe a continuacion. 
+
+\begin{equation*}
+\textbf{ - } \textit{ expf }
+\text{: Negaci\'on de una expresi\'on flotante (expf).}
+\end{equation*}
+\begin{equation*}
+\textbf{ ( } \textit{ expf }\textbf{ ) }\text{: Agrupaci\'on de una expresi\'on flotante.}
+\end{equation*}
+\begin{equation*}
+\textit{ expf } \textbf{ + } \textit{ expf }\text{: Suma de dos expresiones flotantes.}
+\end{equation*}
+\begin{equation*}
+\textit{ expf } \textbf{ * } \textit{ expf }\text{ Multiplicación de dos expresiones flotantes.}
+\end{equation*}
+\begin{equation*}
+\textit{ expf } \textbf{ - } \textit{ expf }\text{ Resta de dos expresiones flotantes.}
+\end{equation*}
+\begin{equation*}
+\textit{ expf } \textbf{ / } \textit{ expf }\text{ División de dos expresiones flotantes.}
+\end{equation*}
+\begin{equation*}
+\textbf{ sen ( } \textit{ expf } \textbf{ ) }\text{: Seno de una expresión flotante.}
+\end{equation*}
+\begin{equation*}
+\textbf{ cos ( } \textit{ expf } \textbf{ ) }\text{: Coseno de una expresión flotante.}
+\end{equation*}
+\begin{equation*}
+\textbf{ tan ( } \textit{ expf } \textbf{ ) }\text{' expf '): Tangente de una expresión flotante.}
+\end{equation*}
+\begin{equation*}
+\textbf{ log ( } \textit{ expf } \textbf{ ) }\text{: Logaritmo de base 10 una expresión flotante.}
+\end{equation*}
+\begin{equation*}
+\textbf{ floor ( } \textit{ expf } \textbf{ ) }\text{: Redondeo hacia abajo de una expresión flotante.}
+\end{equation*}
+\begin{equation*}
+\textbf{ ceil ( } \textit{ expf } \textbf{ ) }\text{: Redondeo hacia arriba de una expresión flotante.}
+\end{equation*}
+\begin{equation*}
+\textbf{ exp ( } \textit{ expf , expf } \textbf{ ) }\text{: Función exponencial con dos argumentos flotantes.}
+\end{equation*}
+\begin{equation*}
+\textbf{ round ( } \textit{ expf , num } \textbf{ ) }
+\begin{aligned}
+\text{Redondeo de una expresión flotante con una } \\
+\text{cantidad determinada (num) de decimales.}
+\end{aligned}
+\end{equation*}
+
+\section{Expresiones booleanas}
+Las expresiones booleanas se pueden relacionar con los siguientes operadores.
+
+\begin{equation*}
+\textbf{true} \text{ y } \textbf{false}\text{: Representan valores booleanos directos.}
+\end{equation*}
+\begin{equation*}
+\textit{expf} < \textit{expf} \text{ y } \textit{expf} > \textit{expf}\text{: Permite comparaciones relacionales entre expresiones flotantes.}
+\end{equation*}
+\begin{equation*}
+\textit{boolexp } \& \textit{ boolexp}\text{: Operador lógico AND para conjunción de expresiones booleanas.}
+\end{equation*}
+\begin{equation*}
+\textit{boolexp } | \textit{ boolexp}\text{: Operador lógico OR para disyunción de expresiones booleanas.}
+\end{equation*}
+\begin{equation*}
+\sim \textit{boolexp}\text{: Operador unario NOT para negación de una expresión booleana.}
+\end{equation*}
+\begin{equation*}
+\textbf{(} \textit{ boolexp } \textbf{)}\text{: Permite agrupar expresiones booleanas para establecer el orden de evaluación.}
+\end{equation*}
+
+\section{Comandos b\'asicos y de control de flujo}
+En este lenguaje, se emplean comandos fundamentales para la 
+manipulación eficiente de variables y el control del flujo de ejecución t\'ipicos
+en cualquier lenguaje imperativo.\newline
+\begin{equation*}
+    \textit{varf} \textbf{ := } \textit{ expf }
+\end{equation*}
+La asignacion de expresi\'on flotante (expf) a una variable de tipo flotante (varf) se har\'a con el 
+operador $:=$. En MoviScript s\'olo se permitir\'a el almacenamiento de valores flotantes 
+en las variables. En versiones futuras se podr\'an incorporar variables de punto, de listas de 
+expresiones flotantes y de listas de punto.
+\begin{equation*}
+    \textit{comm} \textbf{ ; } \textit{ comm }
+    \text {: La secuenciaci\'on de comandos se realiza con el caracter ';'.}
+\end{equation*}
+\begin{equation*}
+\textbf{ if ( } \textit{boolexp} \textbf{) then } \textit{comm} \textbf{ else } \textit{comm} \textbf{ end }
+\end{equation*}
+Estructura condicional clasica if-then-else que ejecuta un bloque de comandos u otro seg\'un la evaluación de una expresión booleana.
+\newline
+\begin{equation*}
+\textbf{ while (} \textit{boolexp} \textbf{) do } \textit{comm} \textbf{ end }
+\end{equation*}
+Establece un bucle que repite la ejecuci\'on de un bloque de
+comandos mientras una condici\'on booleana se mantenga verdadera.
+
+\section{Comandos sobre puntos y listas de puntos}
+En MoviScript, las instrucciones relacionadas con puntos proporcionan herramientas 
+fundamentales para la manipulación espacial y el análisis geom\'etrico. 
+Estas instrucciones permiten la opreaciones de puntos en un plano bidimensional 
+ como la medición de la distancia entre el origen y un punto específico, 
+ as\'i como la determinación del \'angulo que dicho punto forma con el eje x. 
+ La capacidad de calcular la distancia y el \'angulo facilita el desarrollo de 
+ algoritmos espaciales avanzados, permitiendo a los programadores abordar tareas 
+ relacionadas con la ubicaci\'on y la orientación en el contexto específico de 
+ dispositivos m\'oviles. \newline
+La representaci\'on de un punto en nuestro lenguaje sera un par ordenado de expresiones flotantes.
+ \begin{equation*}
+point = ( expf , expf )
+\end{equation*}
+Sobre un punto se pueden realiar los siguientes comandos.
+\begin{equation*}
+\textbf{dist(}point\textbf{)}
+\text{. Establece la distancia entre un punto 
+(point) y el origen de coordinadas}
+\end{equation*}
+\begin{equation*}
+    \textbf{rangle(}point\textbf{)}
+    \end{equation*}
+El comando $rangle$ establece el angulo (en radianes, de 0 a 2\(\pi\)) determinado entre la recta que pasa por el punto 
+(point) y el eje x.
+\begin{equation*}
+    \textbf{gangle(}point\textbf{)}
+    \end{equation*}
+El comando $gangle$ establece el angulo (en grados, de 0 a 360°) determinado entre la recta que pasa por el punto 
+(point) y el eje x.
+\begin{equation*}
+\textbf{path(}expf , var, [expf] \textbf{)}
+\end{equation*}
+Con el comando $path$ podremos generar listas de puntos $(x_i,y_i)$ en funci\'on de una 
+expresi\'on matem\'atica $(f)$, una variable $(x)$ y una lista de expresiones flotantes
+ donde evaluaremos nuestra expresi\'on matem\'atica ($x_i$).
+El comando toma tres argumentos:
+\begin{itemize}
+    \item $expf:$ Es una expresi\'on matem\'atica ($f$) que generara los valores $y_i$. 
+    \item $var:$ Es la variable $(x)$ en que se evaluar\'a en la expresi\'on matem\'atica $expf$.  
+    \item $[expf]$: Es la lista de valores $x_i$ en la que se evaluar\'a la funci\'on $f$.
+\end{itemize}
+
+\section{Comandos de movimientos}
+En esta secci\'on describiremos las funciones que brindan la capacidad
+ del dispositivo para moverse de manera inteligente y eficiente, 
+ ofreciendo a los programadores las herramientas necesarias para la 
+ creación de algoritmos de movilidad. Por un lado tenemos herramientas de 
+ navegaci\'on b\'asica:
+\begin{equation*}
+\textbf{fd(} dist , time \textbf{)}
+\end{equation*}
+Con el comando $Fd$ se indica al m\'ovil el avance lineal de una distancia($dist$, de tipo expresi\'on flotante) en durante en un tiempo determinado($time$, de tipo expresi\'on flotante).
+\begin{equation*}
+\textbf{bk(} dist , time \textbf{)}
+\end{equation*}
+Con el comando $Bk$ se indica al m\'ovil el retroceso lineal de una distancia($dist$, de tipo expresi\'on flotante) en durante en un tiempo determinado($time$, de tipo expresi\'on flotante).
+\begin{equation*}
+\textbf{turn(} ang , time \textbf{)}
+\end{equation*}
+Con el comando $Turn$ se indica al m\'ovil el giro de un angulo en grados($ang$, de tipo expresi\'on flotante) en durante en un tiempo determinado($time$, de tipo expresi\'on flotante).
+
+\bigskip
+El lenguaje, tambi\'en cuenta con instrucciones complejas que permiten elaboraci\'on de algoritmos avanzados:
+\begin{equation*}
+\textbf{lookat(}point, vel\textbf{)}
+\end{equation*}
+Con el comando $LookAt$ se indica al m\'ovil el giro en direcci\'on al 
+punto ($point$). La coordenada del punto ser\'a en  caracter relativo al propio m\'ovil 
+tomando como origen de coordenadas el  m\'ovil y el sentido positivo del eje x ser\'a 
+la direcci\'on en la que esta apuntando el m\'ovil al momento de ejecutar la instrucci\'on.
+La velocidad de giro ser\'a la indicada como $vel$.
+\begin{equation*}
+\textbf{goline(}point , vel-lineal , vel-angular \textbf{)}
+\end{equation*}
+Con el comando $GoLine$ se indica al m\'ovil el giro en direcci\'on al 
+punto ($point$) y luego su desplazamiento al punto mencionado. La coordenada 
+del punto ser\'a en  caracter relativo al propio m\'ovil 
+tomando como origen de coordenadas el  m\'ovil y el sentido positivo del eje x ser\'a 
+la direcci\'on en la que esta apuntando el m\'ovil al momento de ejecutar la instrucci\'on.
+La velocidad de giro ser\'a la indicada como $vel-angular$ y la velocidad de desplazamiento
+ser\'a la indicada como $vel-lienal$.
+
+\begin{equation*}
+\textbf{follow(}listpoint , vel-lineal , vel-angular \textbf{)}
+\end{equation*}
+Con el comando $follow$ se indica que el m\'ovil haga un recorrido determinado
+por la lista de puntos ($listpoint = [(x_1,y_1),(x_2,y_2)...(x_n,y_n)]$).
+\newline
+La velocidad de giro ser\'a la indicada como $vel-angular$ y la velocidad de desplazamiento
+ser\'a la indicada como $vel-lienal$.
+\begin{equation*}
+\textbf{followsmart(}listpoint-allow , listpoint-contingency-allow , vel-lineal , vel-angular \textbf{)}
+\end{equation*}                
+De igual manera que el comando $follow$, el comando $followsmart$
+ indica que el m\'ovil haga un recorrido determinado
+por la lista de puntos seguido de las posiciones en las que estar\'a habilitado el m\'ovil 
+para circular. La lista de puntos-contingency ser\'a la lista de puntos
+($listpoint-allow = def\_obstacles [(x_1,y_1),(x_2,y_2)...(x_n,y_n)], [x_1 ... x_i ... x_n]$) donde
+$x_i$ indica la lista de puntos en los que el m\'ovil esta obstaculizado por el medio para ciruclar.
+\newline
+En este caso, el comando $followsmart$ incorpora informaci\'on del medio. Lo hace mediante la lista de puntos que en este caso
+ser\'a una lista de \'indices en los que los puntos obstaculizados por el medio.
+\newline
+Si  el m\'ovil descure que su camino est\'a impedido por alg\'un obstaculo el lenguaje MoviScript tendr\'a un camino de contingencia 
+(relativo al \'ultimo punto de la lista $listpoint$ que logr\'o acceder sin obstaculos). N\'otese que 
+esta contingencia es relativo al \'ultimo punto y se utilizar\'a como contingencia de forma 
+recursiva, de forma de que si hay obstaculos abordando el camino de contingencia el m\'ovil 
+tambi\'en utilizar\'a el camino de contingencia.
+
+\section{Sem\'antica de los comandos}
+
+\textbf{Lookat}
+\[
+ \frac{p \downarrow (p_x,p_y)}{Lookat(p, v) \to Turn( \frac{180} {\pi} * atan^2(p_x, p_y) , v)}
+\]
+
+\textbf{Goline}
+\[
+ \frac{p \downarrow dist}{Goline (p,v_1,v_2) \to Seq( Lookat(p, v_1) , Fd (\frac{dist}{v_2}, v_2)}
+\]
+
+\textbf{TurnAbs}
+\[
+ \frac{}{TurnAbs(ang, vel) \to Turn\left(\left(\frac{ang - angAct}{v}\right), vel\right)}
+\]
+
+\textbf{GolineAbs}
+\[
+ \frac{p \downarrow (p_x,p_y), p \downarrow dist}{Seq (TurnAbs \left(\frac{180}{\pi} \cdot atan2 (p_x, p_y)\right) \ v_1, Fd(\frac{dist}{v_2}), v_2)}
+\]
+
+\textbf{Follow}
+\begin{equation}
+\frac{}{Follow([], v_1, v_2) \to Skip}
+\end{equation}
+    
+\begin{equation}
+\frac{}{Follow([p], v_1, v_2) \to GolineAbs(p, v_1, v_2)}
+\end{equation}
+    
+\begin{equation}
+ \frac{p \downarrow (p_x,p_y) , q \downarrow (q_x,q_y)}{Follow(p:q:ps, v_1, v_2) \to {Seq(GolineAbs(p, v_1, v_2), Follow(((q_x - p_x, q_y - p_y) : ps), v_1, v_2))}}
+\end{equation}
+
+\textbf{Followsmart}
+\setcounter{equation}{0}
+\begin{equation}
+    \frac{}{FollowSmart([], contingency, v_1, v_2) \to Skip}
+    \end{equation}
+    
+    \begin{equation}
+    \frac{}{FollowSmart([p], contingency, v_1, v_2) \to GolineAbs(p, v_1, v_2)}
+    \end{equation}
+    \begin{equation}
+\frac{}{FollowSmart([], contingency, v_1, v_2) \to Skip}
+\end{equation}
+    
+\begin{equation}
+\frac{}{FollowSmart([p], contingency, v_1, v_2) \to GolineAbs(p, v_1, v_2)}
+\end{equation}
+
+
+\begin{equation}
+\begin{split}
+\frac{}{FollowSmart(((p,True):(q,b):xs), contingency, v_1, v_2) \to Seq(GolineAbs(p, v_1, v_2), } \\
+FollowSmart(((q_x - p_x, q_y - p_y), b):xs), contingency, v_1, v_2)
+\end{split}
+\end{equation}
+    
+\begin{equation}
+    \begin{split}
+\frac{p \downarrow (p_x,p_y) , q \downarrow (q_x,q_y)}{FollowSmart(((p, False):(q,b):xs), [], v1, v2) \to} \\
+FollowSmart((((q_x - p_x, q_y - p_y), b):xs), [], v_1, v_2)
+    \end{split}
+\end{equation}
+    
+\begin{equation}
+    \begin{split}
+\frac{p \downarrow (p_x,p_y) , c \downarrow (c_x,c_y)}{FollowSmart((((p, False):xs), ((c,b):cs), v_1, v_2)) \to } \\
+FollowSmart((((c_x + p_x, c_y + p_y), b):cs \mathop{+\!\!+} xs), ((c,b):cs), v_1, v_2)
+    \end{split}
+\end{equation}
+
+\section{Posibles pr\'oximas versiones}
+
+En futuras versiones, MoviScript podr\'a tomar informaci\'on del medio con un sensor frontal del m\'movil. 
+Tambi\'en se podr\'a compilar MoviScript a c\'odigo 
+$NQC$\footnote{Not Quite C es un lenguaje simple que sintaxis similar a C utilizado para programar 
+la \'inea rob\'otica de LEGO denominada Maindstorms. Para m\'as informaci\'on visitar la 
+documentaci\'on: https://bricxcc.sourceforge.net/nqc/}
+ y de esta forma podr\'a ser ejecutado en un m\'ovil construido 
+ en $LEGO MINDSTORMS$.
+
+\end{document}

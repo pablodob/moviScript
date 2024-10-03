@@ -89,10 +89,10 @@ instance MonadError State where
 
 -- Clase para representar mónadas que marca la traza.
 class Monad m => MonadTrace m where
-    trace :: String -> Double -> Double -> m ()
+    trace :: String -> m ()
 
 instance MonadTrace State where
-    trace str v t = State (\s -> Right ((), s, "", str ++ " | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n"))
+    trace str = State (\s -> Right ((), s, "", str))
 
 -- Clase para representar mónadas que marca la traza.
 class Monad m => MonadLogo m where
@@ -103,6 +103,7 @@ instance MonadLogo State where
 
 -- Para calmar al GHC
 instance Functor State where
+    fmap :: (a -> b) -> State a -> State b
     fmap = liftM
 
 
@@ -113,86 +114,85 @@ instance Applicative State where
 -- Evalua un programa en el estado nulo
 -- Matcheamos los errores UndefVar y DivByZero para tener un mensaje de error distinto en cada tipo de error
 eval :: Comm -> (Env, String, String)
-eval p = case runState (stepCommStar p) initState of
+eval p = case runState (evalComm p) initState of
     Right (v, s, lg, tr) -> (s, lg, tr)
     Left UndefVar     -> error "Variable no definida"
     Left DivByZero    -> error "Division por cero"
 
 -- Evalua multiples pasos de un comnado en un estado,
 -- hasta alcanzar un Skip
+{-
 stepCommStar :: (MonadState m, MonadError m, MonadTrace m, MonadLogo m) => Comm -> m Comm
 stepCommStar Skip = return Skip
 stepCommStar p = do p' <- stepComm p
                     stepCommStar p'
+-}
 
 -- Evalua un paso de una primitiva en un estado dado
-stepComm :: (MonadState m, MonadError m, MonadTrace m, MonadLogo m) => Comm -> m Comm
-stepComm (Letf v e)         = do val <- evalFloatExp e
+evalComm :: (MonadState m, MonadError m, MonadTrace m, MonadLogo m) => Comm -> m ()
+evalComm Skip               = return ()
+evalComm (Letf v e)         = do val <- evalFloatExp e
                                  update v val
-                                 return Skip
-stepComm (Seq Skip c1)      =   return c1
-stepComm (Seq l r)          = do stepComm l
-                                 return r
-stepComm (Cond b c0 c1)     = do bval <- evalBoolExp b
-                                 if bval then return c0
-                                         else return c1
-stepComm (While b c)     = do bval <- evalBoolExp b
-                              if bval then return (Seq c (While b c))
-                                      else return Skip
-stepComm (Fd time vel)      = do end <- evalBoolExp (Or (Eq time (Const 0)) (Lt time (Const 0)))
-                                 if end
-                                 then return Skip
-                                      else do v <- evalFloatExp vel
-                                              t <- evalFloatExp time
-                                              trace "Fd" v t
-                                              logo "fd" v t
-                                              return (Fd (Minus time (Const 1.0)) vel)
+evalComm (Seq Skip c1)      =   evalComm c1
+evalComm (Seq l r)          = do evalComm l
+                                 evalComm r
+evalComm (Cond b c0 c1)     = do bval <- evalBoolExp b
+                                 if bval then evalComm c0
+                                         else evalComm c1
+evalComm (While b c)     = do bval <- evalBoolExp b
+                              if bval then evalComm (Seq c (While b c))
+                                      else evalComm Skip
+evalComm (Fd time vel)      = do v <- evalFloatExp vel
+                                 t <- evalFloatExp time
+                                 trace ("Forward | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
+                                 logo "fd" (v*50) t
 
-stepComm (Turn time vel) = do v <- evalFloatExp vel
+evalComm (Turn time vel) = do v <- evalFloatExp vel
                               t <- evalFloatExp time
-                              trace "Turn" v t
+                              trace ("Turn | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
                               logo "rt" v t
                               addAngle (v*t)
-                              return Skip
 
-stepComm (TurnAbs ang vel) = do angAct <- getAngle
+evalComm (TurnAbs ang vel) = do angAct <- getAngle
                                 v <- evalFloatExp vel
-                                return (Turn (Const ((ang - angAct)/v)) vel)
+                                trace ("TurnAbs | Vel: " ++ show v ++ " | Angle: " ++ show ang ++ " | AngleAct: " ++ show angAct ++ "\n")
+                                evalComm (Turn (Const ((ang - angAct)/v)) vel)
 
-stepComm (Lookat p v)      = do px <- evalFloatExp (fst p)
+evalComm (Lookat p v)      = do px <- evalFloatExp (fst p)
                                 py <- evalFloatExp (snd p)
-                                return (Turn (Const (180 / pi * atan2 px py)) v)
+                                evalComm (Turn (Const (180 / pi * atan2 px py)) v)
 
-stepComm (Goline p v1 v2)  = do dist <- evalFloatExp (Dist p)
+evalComm (Goline p v1 v2)  = do dist <- evalFloatExp (Dist p)
                                 v2d <- evalFloatExp v2
-                                return (Seq (Lookat p v1) (Fd (Const (dist/v2d)) v2))
+                                evalComm (Seq (Lookat p v1) (Fd (Const (dist/v2d)) v2))
 
-stepComm (GolineAbs p v1 v2)  = do px <- evalFloatExp (fst p)
+evalComm (GolineAbs p v1 v2)  = do px <- evalFloatExp (fst p)
                                    py <- evalFloatExp (snd p)
                                    v2d <- evalFloatExp v2
                                    dist <- evalFloatExp (Dist p)
-                                   return (Seq (TurnAbs (180 / pi * atan2 px py) v1) (Fd (Const (dist/v2d)) v2))
+                                   trace ("GolineAbs | px: " ++ show px ++ " | py: " ++ show py ++ "\n")
+                                   evalComm (Seq (TurnAbs (180 / pi * atan2 px py) v1) (Fd (Const (dist/v2d)) v2))
 
-stepComm (Follow (LPoint []) v1 v2) = return Skip
-stepComm (Follow (LPoint [p]) v1 v2) = return (GolineAbs p v1 v2)
-stepComm (Follow (LPoint (p:q:ps)) v1 v2) = return (Seq (GolineAbs p v1 v2) (Follow (LPoint ((Minus (fst q) (fst p),Minus (snd q) (snd p)):ps)) v1 v2))
-stepComm (Follow (Path exp v list) v1 v2) = do lp <- evalListPoint (Path exp v list)
-                                               return (Follow lp v1 v2)
+evalComm (Follow (LPoint []) v1 v2) = evalComm Skip
+evalComm (Follow (LPoint [p]) v1 v2) = evalComm (GolineAbs p v1 v2)
+evalComm (Follow (LPoint (p:q:ps)) v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (Follow (LPoint ((Minus (fst q) (fst p),Minus (snd q) (snd p)):ps)) v1 v2))
+evalComm (Follow (Path exp v list) v1 v2) = do lp <- evalListPoint (Path exp v list)
+                                               evalComm (Follow lp v1 v2)
 
 
-stepComm (FollowSmart (LPointAllow []) contingency v1 v2) = return Skip
+evalComm (FollowSmart (LPointAllow []) contingency v1 v2) = evalComm Skip
 -- Si queda un solo punto en el camino y no esta obstaculizado va hacia el punto
-stepComm (FollowSmart (LPointAllow [(p,True)]) contingency v1 v2) = return (GolineAbs p v1 v2)
+evalComm (FollowSmart (LPointAllow [(p,True)]) contingency v1 v2) = evalComm (GolineAbs p v1 v2)
 -- Si quedan mas de 1 punto y no esta obstaculizado va hacia el punto y continua el camino
-stepComm (FollowSmart (LPointAllow ((p,True):(q,b):xs)) contingency v1 v2) = return (Seq (GolineAbs p v1 v2) (FollowSmart (LPointAllow (((Minus (fst q) (fst p),Minus (snd q) (snd p)), b):xs)) contingency v1 v2))
+evalComm (FollowSmart (LPointAllow ((p,True):(q,b):xs)) contingency v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (FollowSmart (LPointAllow (((Minus (fst q) (fst p),Minus (snd q) (snd p)), b):xs)) contingency v1 v2))
 -- Si esta obstaculizado y no tiene camino de contingencia se saltea el punto y va al siguiente
-stepComm (FollowSmart (LPointAllow ((p,False):(q,b):xs)) (LPointAllow []) v1 v2) = return (FollowSmart (LPointAllow (((Minus (fst q) (fst p),Minus (snd q) (snd p)), b):xs)) (LPointAllow []) v1 v2)
+evalComm (FollowSmart (LPointAllow ((p,False):(q,b):xs)) (LPointAllow []) v1 v2) = evalComm (FollowSmart (LPointAllow (((Minus (fst q) (fst p),Minus (snd q) (snd p)), b):xs)) (LPointAllow []) v1 v2)
 -- Si esta obstaculizado y es el ultimo punto del camino termina
-stepComm (FollowSmart (LPointAllow [(p,False)]) contingency v1 v2) = return Skip
+evalComm (FollowSmart (LPointAllow [(p,False)]) contingency v1 v2) = evalComm Skip
 -- Si esta obstaculizado y no es el ultimo punto del camino toma el camino de contingencia
-stepComm (FollowSmart (LPointAllow ((p,False):xs)) (LPointAllow ((c,b):cs)) v1 v2) = return (FollowSmart (LPointAllow  ((((Plus (fst c) (fst p), Plus (snd c) (snd p)),b) : cs) ++ xs)) (LPointAllow ((c,b):cs)) v1 v2)
-stepComm (FollowSmart (Obs (LPoint lpoint) list) lpa v1 v2) = stepComm (FollowSmart (transformObs (Obs (LPoint lpoint) list)) lpa v1 v2)
-stepComm (FollowSmart lpa (Obs (LPoint lpoint) list) v1 v2) = stepComm (FollowSmart lpa (transformObs (Obs (LPoint lpoint) list)) v1 v2)
+evalComm (FollowSmart (LPointAllow ((p,False):xs)) (LPointAllow ((c,b):cs)) v1 v2) = evalComm (FollowSmart (LPointAllow  ((((Plus (fst c) (fst p), Plus (snd c) (snd p)),b) : cs) ++ xs)) (LPointAllow ((c,b):cs)) v1 v2)
+evalComm (FollowSmart (Obs (LPoint lpoint) list) lpa v1 v2) = evalComm (FollowSmart (transformObs (Obs (LPoint lpoint) list)) lpa v1 v2)
+evalComm (FollowSmart lpa (Obs (LPoint lpoint) list) v1 v2) = evalComm (FollowSmart lpa (transformObs (Obs (LPoint lpoint) list)) v1 v2)
 
 -- Funciones auxiliares
 consListPoint :: Point -> ListPoint -> ListPoint
@@ -205,23 +205,25 @@ transformObs (LPointAllow [xsAlow]) = LPointAllow [xsAlow]
 
 -- Evalua ListPoint
 evalListPoint :: (MonadState m, MonadError m, MonadTrace m, MonadLogo m) => ListPoint -> m ListPoint
-evalListPoint (Path exp v list) = case list of
-                                        [] -> return (LPoint [])
-                                        x:xs -> do b <- varexist v
-                                                   if b then do
-                                                       do valv <- lookfor v
-                                                          valx <- evalFloatExp x
-                                                          update v valx
-                                                          valy <- evalFloatExp exp
-                                                          update v valv
-                                                          return (consListPoint (Const valx,Const valy) (Path exp v xs))
-                                                   else do
-                                                          valx <- evalFloatExp x
-                                                          update v valx
-                                                          valy <- evalFloatExp exp
-                                                          delete v
-                                                          return (consListPoint (Const valx,Const valy) (Path exp v xs))
+evalListPoint (Path exp v []) = return (LPoint [])
+evalListPoint (Path exp v (x:xs) ) = do b <- varexist v
+                                        if b    then do valv <- lookfor v
+                                                        valx <- evalFloatExp x
+                                                        update v valx
+                                                        valy <- evalFloatExp exp
+                                                        update v valv
+                                                        lp <- evalListPoint (Path exp v xs)
+                                                        return (consListPoint (Const valx,Const valy) lp)
+                                                else do
+                                                        valx <- evalFloatExp x
+                                                        update v valx
+                                                        valy <- evalFloatExp exp
+                                                        delete v
+                                                        lp <- evalListPoint (Path exp v xs)
+                                                        return (consListPoint (Const valx,Const valy) lp)
+
 evalListPoint (LPoint xs) = return (LPoint xs)
+
 
 -- Evalua una expresion decimal, sin efectos laterales
 evalFloatExp :: (MonadState m, MonadError m) => Expf -> m Double
