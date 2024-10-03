@@ -222,17 +222,11 @@ obstacle = try (do reserved movi "def_obstacles"
                    reservedOp movi "["
                    list <- sepBy (natural movi) (char ',')
                    reservedOp movi "]"
-                   return LPointAllow [(point, elem i list) | (point , i) <- zip (getPoints lpoint) [0..]]
-
---return (Obs lpoint list))
+                   return (LPointAllow [(point, i `elem` list) | (point , i) <- zip (getPoints lpoint) [0..]]))
 
 -- Funcion auxiliar
 getPoints :: ListPoint -> [Point]
 getPoints (LPoint [xs]) = [xs]
-
--- Evalua Obstacle
-evalObs :: Obstacle -> Obstacle
-evalObs (Obs (LPoint lpoint) list) = LPointAllow [(point, elem i list) | (point , i) <- zip lpoint [0..]]
 
 {-
 TransormAux :: Obstacle -> Obstacle
@@ -272,7 +266,7 @@ comm :: Parser Comm
 comm = chainl1 comm2 (try (do reservedOp movi ";"
                               return Seq))
 
-comm2 = try (do reserved movi "skip"
+comm2 = try (do reserved movi "end"
                 return Skip)
         <|> try (do reserved movi "if"
                     reservedOp movi "("

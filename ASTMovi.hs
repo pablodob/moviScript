@@ -67,5 +67,4 @@ data Comm = Skip
           | GolineAbs Point Vel Vel
           | Follow ListPoint Vel Vel 
           | FollowSmart Obstacle Obstacle Vel Vel
-          | USensor Sensor Bool
  deriving Show
