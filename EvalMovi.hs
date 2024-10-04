@@ -16,17 +16,18 @@ data Error = UndefVar | DivByZero
 -- Estados
 type EnvV = [(Variable,Double)]
 type EnvAng = Double
-type Env = (EnvV, EnvAng)
+type Env = (EnvV, EnvAng, Point)
 
 -- Estado nulo
 initState :: Env
-initState = ([],0.0)
+initState = ([],0.0, (Const 0.0, Const 0.0))
 
 -- Monada de estado
 newtype State a = State { runState :: Env -> Either Error (a, Env, String, String) }
 
 instance Monad State where
     return x = State (\s -> Right (x, s, "", ""))
+    (>>=) :: State a -> (a -> State b) -> State b
     m >>= f = State (\s -> do (v, s', lg, p) <- runState m s
                               (v', s'', lg', p') <- runState (f v) s'
                               return (v', s'', lg ++ lg', p ++ p'))
@@ -39,6 +40,9 @@ class Monad m => MonadState m where
     varexist :: Variable -> m Bool -- Para determinar si una variable existe en el estado
     addAngle :: Double -> m ()
     getAngle :: m Double
+    putPoint :: Point -> m()
+    getPoint :: m Point
+
 
 instance MonadState State where
     -- Dos operaciones para analizar sensores
@@ -47,13 +51,13 @@ instance MonadState State where
                     where lookfor' var []               = Left UndefVar
                           lookfor' var ((var', val):ss) | var == var' = Right val
                                                         | otherwise   = lookfor' var ss
-    update var val = State (\s -> Right ((), (update' var val (getEnvVar s), getEnvAngle s), "", ""))
+    update var val = State (\s -> Right ((), (update' var val (getEnvVar s), getEnvAngle s, getEnvPoint s), "", ""))
                      where update' var val [] = [(var, val)]
                            update' var val ((var', val'):ss) | var == var' = (var, val):ss
                                                              | otherwise   = (var', val'):update' var val ss
 
     -- Dos operaciones utiles para el Path: delete y varexist
-    delete var = State (\s -> Right ((), (delete' var (getEnvVar s), getEnvAngle s), "", ""))
+    delete var = State (\s -> Right ((), (delete' var (getEnvVar s), getEnvAngle s, getEnvPoint s), "", ""))
                     where delete' var [] = []
                           delete' var ((var', val'):ss) | var == var' = ss
                                                         | otherwise   = (var', val'):delete' var ss
@@ -62,17 +66,22 @@ instance MonadState State where
                           varexist' var ((var', val):ss) | var == var' = True
                                                          | otherwise   = varexist' var ss
     -- Dos operaciones utiles para analizar el angulo del movil
-    addAngle var = State (\s -> Right ((), (getEnvVar s, correctAngle (var + getEnvAngle s)), "", ""))
+    addAngle var = State (\s -> Right ((), (getEnvVar s, correctAngle (var + getEnvAngle s), getEnvPoint s), "", ""))
     getAngle = State (\s -> Right (getEnvAngle s, s, "", ""))
+    putPoint p = State (\s -> Right ((), (getEnvVar s, getEnvAngle s, p), "", ""))
+    getPoint = State (\s -> Right (getEnvPoint s, s, "", ""))
 
 ---------------------------------------------------------------------
 -- Funciones auxiliares para desempaquetar tupla de tres elementos --
 ---------------------------------------------------------------------
-getEnvVar :: (EnvV, EnvAng) -> EnvV
-getEnvVar (a, _) = a
+getEnvVar :: (EnvV, EnvAng, Point) -> EnvV
+getEnvVar (a, _, _) = a
 
-getEnvAngle :: (EnvV, EnvAng) -> EnvAng
-getEnvAngle (_, a) = a
+getEnvAngle :: (EnvV, EnvAng, Point) -> EnvAng
+getEnvAngle (_, a, _) = a
+
+getEnvPoint :: (EnvV, EnvAng, Point) -> Point
+getEnvPoint (_, _, a) = a
 
 correctAngle :: Double -> Double
 correctAngle var
@@ -144,18 +153,28 @@ evalComm (While b c)     = do bval <- evalBoolExp b
                                       else evalComm Skip
 evalComm (Fd time vel)      = do v <- evalFloatExp vel
                                  t <- evalFloatExp time
-                                 trace ("Forward | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
+                                 actualpoint <- getPoint
+                                 angle <- getAngle
+                                 apx <- evalFloatExp (fst actualpoint)
+                                 apy <- evalFloatExp (snd actualpoint)
+
+                                 putPoint (Const (apx + v * t * cos (angle * pi / 180.0)), Const (apy + v * t * sin (angle * pi / 180.0)))
+                                 trace ("Forward | Vel: " ++ show v ++ " | Time: " ++ show t ++ " | Dist: " ++ show (v*t) ++ "\n")
                                  logo "fd" (v*50) t
 
 evalComm (Turn time vel) = do v <- evalFloatExp vel
                               t <- evalFloatExp time
-                              trace ("Turn | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
-                              logo "rt" v t
+                              --trace ("Turn | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
+                              logo "rt" (-v) t
+                              angle <- getAngle
+                              trace ("Angle: " ++ show angle ++ "\n")
                               addAngle (v*t)
+                              angle <- getAngle
+                              trace ("Angle: " ++ show angle ++ "\n")
 
 evalComm (TurnAbs ang vel) = do angAct <- getAngle
                                 v <- evalFloatExp vel
-                                trace ("TurnAbs | Vel: " ++ show v ++ " | Angle: " ++ show ang ++ " | AngleAct: " ++ show angAct ++ "\n")
+                                --trace ("TurnAbs | Vel: " ++ show v ++ " | Angle: " ++ show ang ++ " | AngleAct: " ++ show angAct ++ "\n")
                                 evalComm (Turn (Const ((ang - angAct)/v)) vel)
 
 evalComm (Lookat p v)      = do px <- evalFloatExp (fst p)
@@ -166,16 +185,18 @@ evalComm (Goline p v1 v2)  = do dist <- evalFloatExp (Dist p)
                                 v2d <- evalFloatExp v2
                                 evalComm (Seq (Lookat p v1) (Fd (Const (dist/v2d)) v2))
 
-evalComm (GolineAbs p v1 v2)  = do px <- evalFloatExp (fst p)
-                                   py <- evalFloatExp (snd p)
+evalComm (GolineAbs p v1 v2)  = do actualpoint <- getPoint
+                                   qx <- evalFloatExp (Minus (fst p) (fst actualpoint))
+                                   qy <- evalFloatExp (Minus (snd p) (snd actualpoint))
+                                   
                                    v2d <- evalFloatExp v2
-                                   dist <- evalFloatExp (Dist p)
-                                   trace ("GolineAbs | px: " ++ show px ++ " | py: " ++ show py ++ "\n")
-                                   evalComm (Seq (TurnAbs (180 / pi * atan2 px py) v1) (Fd (Const (dist/v2d)) v2))
+                                   dist <- evalFloatExp (Dist (Const qx, Const qy))
+                                   trace ("Point: " ++ show actualpoint ++ "\n")
+                                   trace ("GolineAbs | qx: " ++ show qx ++ " | qy: " ++ show qy ++ "\n")
+                                   evalComm (Seq (TurnAbs (180 / pi * atan2 qx qy) v1) (Fd (Const (dist/v2d)) v2))
 
 evalComm (Follow (LPoint []) v1 v2) = evalComm Skip
-evalComm (Follow (LPoint [p]) v1 v2) = evalComm (GolineAbs p v1 v2)
-evalComm (Follow (LPoint (p:q:ps)) v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (Follow (LPoint ((Minus (fst q) (fst p),Minus (snd q) (snd p)):ps)) v1 v2))
+evalComm (Follow (LPoint (p:ps)) v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (Follow (LPoint ps) v1 v2))
 evalComm (Follow (Path exp v list) v1 v2) = do lp <- evalListPoint (Path exp v list)
                                                evalComm (Follow lp v1 v2)
 

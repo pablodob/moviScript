@@ -30,7 +30,7 @@ run ifile =
                         putStrLn "------------ Traza ------------"
                         putStrLn (three (eval t))
                         putStrLn "------------ Logo ------------"
-                        writeFile "eval.logo" (two (eval t))
+                        writeFile "eval.logo" ("rt 90\n" ++ two (eval t))
                         exitCode <- system "ucblogo eval.logo"
                         print exitCode
         Left error ->   print error
