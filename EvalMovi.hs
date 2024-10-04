@@ -211,17 +211,26 @@ evalComm (FollowSmart (LPointAllow []) contingency v1 v2) = evalComm Skip
 -- Si queda un solo punto en el camino y no esta obstaculizado va hacia el punto
 evalComm (FollowSmart (LPointAllow [(p,True)]) contingency v1 v2) = evalComm (GolineAbs p v1 v2)
 -- Si quedan mas de 1 punto y no esta obstaculizado va hacia el punto y continua el camino
-evalComm (FollowSmart (LPointAllow ((p,True):(q,b):xs)) contingency v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (FollowSmart (LPointAllow (((Minus (fst q) (fst p),Minus (snd q) (snd p)), b):xs)) contingency v1 v2))
+evalComm (FollowSmart (LPointAllow ((p,True):xs)) contingency v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (FollowSmart (LPointAllow xs) contingency v1 v2))
 -- Si esta obstaculizado y no tiene camino de contingencia se saltea el punto y va al siguiente
-evalComm (FollowSmart (LPointAllow ((p,False):(q,b):xs)) (LPointAllow []) v1 v2) = evalComm (FollowSmart (LPointAllow (((Minus (fst q) (fst p),Minus (snd q) (snd p)), b):xs)) (LPointAllow []) v1 v2)
+evalComm (FollowSmart (LPointAllow ((p,False):xs)) (LPointAllow []) v1 v2) = evalComm (FollowSmart (LPointAllow xs) (LPointAllow []) v1 v2)
 -- Si esta obstaculizado y es el ultimo punto del camino termina
 evalComm (FollowSmart (LPointAllow [(p,False)]) contingency v1 v2) = evalComm Skip
 -- Si esta obstaculizado y no es el ultimo punto del camino toma el camino de contingencia
-evalComm (FollowSmart (LPointAllow ((p,False):xs)) (LPointAllow ((c,b):cs)) v1 v2) = evalComm (FollowSmart (LPointAllow  ((((Plus (fst c) (fst p), Plus (snd c) (snd p)),b) : cs) ++ xs)) (LPointAllow ((c,b):cs)) v1 v2)
+evalComm (FollowSmart (LPointAllow ((p,False):xs)) contingency v1 v2) = evalComm (FollowSmart (lConcat (trasformList p contingency) (LPointAllow xs)) contingency v1 v2)
 evalComm (FollowSmart (Obs (LPoint lpoint) list) lpa v1 v2) = evalComm (FollowSmart (transformObs (Obs (LPoint lpoint) list)) lpa v1 v2)
 evalComm (FollowSmart lpa (Obs (LPoint lpoint) list) v1 v2) = evalComm (FollowSmart lpa (transformObs (Obs (LPoint lpoint) list)) v1 v2)
 
+-- Transforma una lista en posiciones relativas al movil a una lista en posiciones reales
+trasformList :: Point -> Obstacle -> Obstacle
+trasformList p (Obs (LPoint lpoint) list) = trasformList p (transformObs (Obs (LPoint lpoint) list))
+trasformList p (LPointAllow []) = LPointAllow []
+trasformList p (LPointAllow ((x,b):xs)) = LPointAllow (((Plus (fst x) (fst p), Plus (snd x) (snd p)),b):xs)
+
 -- Funciones auxiliares
+lConcat :: Obstacle -> Obstacle -> Obstacle
+lConcat (LPointAllow xs) (LPointAllow ys) = LPointAllow (xs++ys)
+
 consListPoint :: Point -> ListPoint -> ListPoint
 consListPoint x (LPoint xs) = LPoint (x : xs)
 
