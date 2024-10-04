@@ -236,7 +236,7 @@ consListPoint x (LPoint xs) = LPoint (x : xs)
 
 -- Transforma una lista de puntos a una lista de obstaculos con pares ordenados
 transformObs :: Obstacle -> Obstacle
-transformObs (Obs (LPoint lpoint) list) = LPointAllow [(point, i `elem` list) | (point , i) <- zip lpoint [0..]]
+transformObs (Obs (LPoint lpoint) list) = LPointAllow [(point, not(i `elem` list)) | (point , i) <- zip lpoint [0..]]
 transformObs (LPointAllow [xsAlow]) = LPointAllow [xsAlow]
 
 -- Evalua ListPoint

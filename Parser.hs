@@ -220,13 +220,18 @@ obstacle = try (do reserved movi "def_obstacles"
                    lpoint <- listpoint
                    reservedOp movi ","
                    reservedOp movi "["
-                   list <- sepBy (natural movi) (char ',')
+                   list <- sepBy (integer movi) (char ',')
                    reservedOp movi "]"
-                   return (LPointAllow [(point, i `elem` list) | (point , i) <- zip (getPoints lpoint) [0..]]))
+                   reservedOp movi ")"
+                   return (Obs lpoint list))
+
+{-
+                   --return (LPointAllow [(point, i `elem` list) | (point , i) <- zip (getPoints lpoint) [0..]]))
 
 -- Funcion auxiliar
 getPoints :: ListPoint -> [Point]
 getPoints (LPoint [xs]) = [xs]
+-}
 
 {-
 TransormAux :: Obstacle -> Obstacle
