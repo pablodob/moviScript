@@ -153,13 +153,20 @@ evalComm (While b c)     = do bval <- evalBoolExp b
                                       else evalComm Skip
 evalComm (Fd time vel)      = do v <- evalFloatExp vel
                                  t <- evalFloatExp time
-                                 actualpoint <- getPoint
+                                 currentpoint <- getPoint
                                  angle <- getAngle
-                                 apx <- evalFloatExp (fst actualpoint)
-                                 apy <- evalFloatExp (snd actualpoint)
-
-                                 putPoint (Const (apx + v * t * cos (angle * pi / 180.0)), Const (apy + v * t * sin (angle * pi / 180.0)))
+                                 current_px <- evalFloatExp (fst currentpoint)
+                                 current_py <- evalFloatExp (snd currentpoint)
+                                
+                                 putPoint (Const (current_px + v * t * cos (angle * pi / 180.0)), Const (current_py + v * t * sin (angle * pi / 180.0)))
+                                 
+                                 -- Calcualamos la nueva posicion para la traza
+                                 destpoint <- getPoint
+                                 dx <- evalFloatExp (fst destpoint)
+                                 dy <- evalFloatExp (snd destpoint)
+                                 
                                  trace ("Forward | Vel: " ++ show v ++ " | Time: " ++ show t ++ " | Dist: " ++ show (v*t) ++ "\n")
+                                 trace ("Point: ( " ++ show dx ++ " , " ++ show dy ++ " )\n")
                                  logo "fd" (v*50) t
 
 evalComm (Turn time vel) = do v <- evalFloatExp vel
@@ -185,15 +192,14 @@ evalComm (Goline p v1 v2)  = do dist <- evalFloatExp (Dist p)
                                 v2d <- evalFloatExp v2
                                 evalComm (Seq (Lookat p v1) (Fd (Const (dist/v2d)) v2))
 
-evalComm (GolineAbs p v1 v2)  = do actualpoint <- getPoint
-                                   qx <- evalFloatExp (Minus (fst p) (fst actualpoint))
-                                   qy <- evalFloatExp (Minus (snd p) (snd actualpoint))
+evalComm (GolineAbs p v1 v2)  = do currentpoint <- getPoint
+                                   qx <- evalFloatExp (Minus (fst p) (fst currentpoint))
+                                   qy <- evalFloatExp (Minus (snd p) (snd currentpoint))
                                    
                                    v2d <- evalFloatExp v2
                                    dist <- evalFloatExp (Dist (Const qx, Const qy))
-                                   trace ("Point: " ++ show actualpoint ++ "\n")
                                    trace ("GolineAbs | qx: " ++ show qx ++ " | qy: " ++ show qy ++ "\n")
-                                   evalComm (Seq (TurnAbs (180 / pi * atan2 qx qy) v1) (Fd (Const (dist/v2d)) v2))
+                                   evalComm (Seq (TurnAbs (180 / pi * atan2 qy qx) v1) (Fd (Const (dist/v2d)) v2))
 
 evalComm (Follow (LPoint []) v1 v2) = evalComm Skip
 evalComm (Follow (LPoint (p:ps)) v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (Follow (LPoint ps) v1 v2))
