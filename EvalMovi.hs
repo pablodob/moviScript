@@ -167,7 +167,7 @@ evalComm (Fd time vel)      = do v <- evalFloatExp vel
                                  
                                  trace ("Forward | Vel: " ++ show v ++ " | Time: " ++ show t ++ " | Dist: " ++ show (v*t) ++ "\n")
                                  trace ("Point: ( " ++ show dx ++ " , " ++ show dy ++ " )\n")
-                                 logo "fd" (v*50) t
+                                 logo "fd" (v*25) t
 
 evalComm (Turn time vel) = do v <- evalFloatExp vel
                               t <- evalFloatExp time
@@ -217,7 +217,7 @@ evalComm (FollowSmart (LPointAllow ((p,False):xs)) (LPointAllow []) v1 v2) = eva
 -- Si esta obstaculizado y es el ultimo punto del camino termina
 evalComm (FollowSmart (LPointAllow [(p,False)]) contingency v1 v2) = evalComm Skip
 -- Si esta obstaculizado y no es el ultimo punto del camino toma el camino de contingencia
-evalComm (FollowSmart (LPointAllow ((p,False):xs)) contingency v1 v2) = evalComm (FollowSmart (lConcat (trasformList p contingency) (LPointAllow xs)) contingency v1 v2)
+evalComm (FollowSmart (LPointAllow ((p,False):xs)) contingency v1 v2) = if isAllFalse contingency then evalComm (FollowSmart (LPointAllow xs) (LPointAllow []) v1 v2) else evalComm (FollowSmart (lConcat (trasformList p contingency) (LPointAllow xs)) contingency v1 v2)
 evalComm (FollowSmart (Obs (LPoint lpoint) list) lpa v1 v2) = evalComm (FollowSmart (transformObs (Obs (LPoint lpoint) list)) lpa v1 v2)
 evalComm (FollowSmart lpa (Obs (LPoint lpoint) list) v1 v2) = evalComm (FollowSmart lpa (transformObs (Obs (LPoint lpoint) list)) v1 v2)
 
@@ -228,6 +228,11 @@ trasformList p (LPointAllow []) = LPointAllow []
 trasformList p (LPointAllow ((x,b):xs)) = LPointAllow (((Plus (fst x) (fst p), Plus (snd x) (snd p)),b):xs)
 
 -- Funciones auxiliares
+isAllFalse :: Obstacle -> Bool
+isAllFalse (LPointAllow []) = True
+isAllFalse (LPointAllow ((x,b):xs)) = not b && isAllFalse (LPointAllow xs)
+isAllFalse (Obs (LPoint lpoint) list) = isAllFalse (transformObs (Obs (LPoint lpoint) list))
+
 lConcat :: Obstacle -> Obstacle -> Obstacle
 lConcat (LPointAllow xs) (LPointAllow ys) = LPointAllow (xs++ys)
 
