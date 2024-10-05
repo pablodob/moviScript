@@ -171,7 +171,7 @@ evalComm (Fd time vel)      = do v <- evalFloatExp vel
 
 evalComm (Turn time vel) = do v <- evalFloatExp vel
                               t <- evalFloatExp time
-                              --trace ("Turn | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
+                              trace ("Turn | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
                               logo "rt" (-v) t
                               angle <- getAngle
                               trace ("Angle: " ++ show angle ++ "\n")
@@ -181,12 +181,11 @@ evalComm (Turn time vel) = do v <- evalFloatExp vel
 
 evalComm (TurnAbs ang vel) = do angAct <- getAngle
                                 v <- evalFloatExp vel
-                                --trace ("TurnAbs | Vel: " ++ show v ++ " | Angle: " ++ show ang ++ " | AngleAct: " ++ show angAct ++ "\n")
                                 evalComm (Turn (Const ((ang - angAct)/v)) vel)
 
 evalComm (Lookat p v)      = do px <- evalFloatExp (fst p)
                                 py <- evalFloatExp (snd p)
-                                evalComm (Turn (Const (180 / pi * atan2 px py)) v)
+                                evalComm (Turn (Const (180 / pi * atan2 py px)) v)
 
 evalComm (Goline p v1 v2)  = do dist <- evalFloatExp (Dist p)
                                 v2d <- evalFloatExp v2
@@ -209,7 +208,7 @@ evalComm (Follow (Path exp v list) v1 v2) = do lp <- evalListPoint (Path exp v l
 
 evalComm (FollowSmart (LPointAllow []) contingency v1 v2) = evalComm Skip
 -- Si queda un solo punto en el camino y no esta obstaculizado va hacia el punto
-evalComm (FollowSmart (LPointAllow [(p,True)]) contingency v1 v2) = evalComm (GolineAbs p v1 v2)
+-- evalComm (FollowSmart (LPointAllow [(p,True)]) contingency v1 v2) = evalComm (GolineAbs p v1 v2)
 -- Si quedan mas de 1 punto y no esta obstaculizado va hacia el punto y continua el camino
 evalComm (FollowSmart (LPointAllow ((p,True):xs)) contingency v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (FollowSmart (LPointAllow xs) contingency v1 v2))
 -- Si esta obstaculizado y no tiene camino de contingencia se saltea el punto y va al siguiente

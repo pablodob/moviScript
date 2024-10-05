@@ -57,20 +57,23 @@ de expresiones en nuestro lenguaje.\newline
 \pagebreak
 \section{Manual de uso}
 El lenguaje Movi esta embebido en Haskell por lo que para compilar el lenguaje MoviScript 
-se deber\'a tener instalado un compilador de Haskell. Con ghci para su uso se deber\'a 
-ejecutar el siguiente comando en la carpeta en la que se encuentran los archivos Main.hs,
+se deber\'a tener instalado un compilador de Haskell. Tambi\'en es necesario tener instalado el 
+programa ucblogo para poder ejecutar el script en logo con el que se evalua el programa.
+Para hacer estas intalaciones se puede ejecutar en una distribucion Debian o Ubuntu el siguiente comando:
+\begin{lstlisting}[language=bash]
+    apt-get install ghci
+    apt-get install ucblogo
+\end{lstlisting}
+
+Para ejecutar un programa MoviScript se debe ejecutar el script movi.sh en la misma 
+carpeta en la que se encuentran los archivos movi.sh, Main.hs,
 Parser.hs y EvalMovi.hs:
 \begin{lstlisting}[language=bash]
-    ghci Main.hs miPrograma.movi
+    ./movi.sh <ruta-del-programa>/miPrograma.movi 
 \end{lstlisting}
 De esta forma se ejecuta el programa $miPrograma.movi$. La ejecuci\'on en esta primer versi\'on de 
 MoviScript producir\'a una salida en pantalla con las primitivas ejecutadas por el m\'ovil y la traza
- con los puntos por los que pas\'o el m\'ovil.
- Se debe tener instalado ucblogo para poder ejecutar el script en logo con el que se evalua el 
- programa en esta version. Para hacerlo se puede ejecutar en una distribucion Debian o Ubuntu el siguiente comando:
- \begin{lstlisting}[language=bash]
-    apt-get install ucblogo
-\end{lstlisting}
+ con los puntos por los que pas\'o el m\'ovil y un gr\'afico de la traza realizado en logo.
 
 \section{Expresiones flotantes}
 El lenguaje incorpora funciones trigonom\'etricas 
@@ -173,7 +176,8 @@ expresiones flotantes y de listas de punto.
 \begin{equation*}
 \textbf{ if ( } \textit{boolexp} \textbf{) then } \textit{comm} \textbf{ else } \textit{comm} \textbf{ end }
 \end{equation*}
-Estructura condicional clasica if-then-else que ejecuta un bloque de comandos u otro seg\'un la evaluación de una expresión booleana.
+Estructura condicional clasica if-then-else que ejecuta un bloque de comandos u otro 
+seg\'un la evaluación de una expresión booleana.
 \newline
 \begin{equation*}
 \textbf{ while (} \textit{boolexp} \textbf{) do } \textit{comm} \textbf{ end }
@@ -271,7 +275,8 @@ Con el comando $follow$ se indica que el m\'ovil haga un recorrido determinado
 por la lista de puntos ($listpoint = [(x_1,y_1),(x_2,y_2)...(x_n,y_n)]$).
 \newline
 La velocidad de giro ser\'a la indicada como $vel-angular$ y la velocidad de desplazamiento
-ser\'a la indicada como $vel-lienal$.
+ser\'a la indicada como $vel-lienal$. Los puntos del camino est\'an en relaci\'on a al punto de referencia que
+es el m\'ovil al momento de iniciarse la ejecuci\'on del programa.
 \begin{equation*}
 \textbf{followsmart(}listpoint-allow , listpoint-contingency-allow , vel-lineal , vel-angular \textbf{)}
 \end{equation*}                
@@ -285,14 +290,17 @@ $x_i$ indica la lista de puntos en los que el m\'ovil esta obstaculizado por el 
 En este caso, el comando $followsmart$ incorpora informaci\'on del medio. Lo hace mediante la lista de puntos que en este caso
 ser\'a una lista de \'indices en los que los puntos obstaculizados por el medio.
 \newline
-Si  el m\'ovil descure que su camino est\'a impedido por alg\'un obstaculo el lenguaje MoviScript tendr\'a un camino de contingencia 
-(relativo al \'ultimo punto de la lista $listpoint$ que logr\'o acceder sin obstaculos). N\'otese que 
-esta contingencia es relativo al \'ultimo punto y se utilizar\'a como contingencia de forma 
-recursiva, de forma de que si hay obstaculos abordando el camino de contingencia el m\'ovil 
+Si  el m\'ovil intentar circular por una parte del camino que est\'a impedido por alg\'un 
+obstaculo el lenguaje MoviScript tendr\'a un camino de contingencia. Al igual que en el caso de $follow$,
+los puntos del camino est\'an en relaci\'on a al punto de referencia que
+es el m\'ovil al momento de iniciarse la ejecuci\'on del programa. Sin embargo, 
+la lista de contingencia es relativa al \'ultimo punto antes de encontrarse un obstaculo 
+y se utilizar\'a como contingencia de forma  recursiva, de forma de que si hay 
+obstaculos abordando el camino de contingencia el m\'ovil 
 tambi\'en utilizar\'a el camino de contingencia.
 
 \section{Sem\'antica de los comandos}
-
+%Agregar TurnAbs, GolineAbs (que toman y modifican el estado) y modificar la semantica del resto%
 \textbf{Lookat}
 \[
  \frac{p \downarrow (p_x,p_y)}{Lookat(p, v) \to Turn( \frac{180} {\pi} * atan^2(p_x, p_y) , v)}
@@ -310,7 +318,7 @@ tambi\'en utilizar\'a el camino de contingencia.
 
 \textbf{GolineAbs}
 \[
- \frac{p \downarrow (p_x,p_y), p \downarrow dist}{Seq (TurnAbs \left(\frac{180}{\pi} \cdot atan2 (p_x, p_y)\right) \ v_1, Fd(\frac{dist}{v_2}), v_2)}
+ \frac{}{ GolineAbs((p_x,p_y), v_1, v_2) \to Seq (TurnAbs \left(\frac{180}{\pi} \cdot atan2 (p_y, p_x)\right) \ v_1, Fd(\frac{dist}{v_2}), v_2)}
 \]
 
 \textbf{Follow}
@@ -323,8 +331,12 @@ tambi\'en utilizar\'a el camino de contingencia.
 \end{equation}
     
 \begin{equation}
- \frac{p \downarrow (p_x,p_y) , q \downarrow (q_x,q_y)}{Follow(p:q:ps, v_1, v_2) \to {Seq(GolineAbs(p, v_1, v_2), Follow(((q_x - p_x, q_y - p_y) : ps), v_1, v_2))}}
-\end{equation}
+    \frac{}{Follow(p:ps, v_1, v_2) \to {Seq(GolineAbs(p, v_1, v_2), Follow(ps, v_1, v_2))}}
+   \end{equation}
+
+   \begin{equation}
+    \frac{Path (exp,v, list) \downarrow xs}{Follow(Path (exp,v, list), v_1, v_2) \to {Follow(xs, v_1, v_2)}}
+   \end{equation}
 
 \textbf{Followsmart}
 \setcounter{equation}{0}
@@ -333,41 +345,42 @@ tambi\'en utilizar\'a el camino de contingencia.
     \end{equation}
     
     \begin{equation}
-    \frac{}{FollowSmart([p], contingency, v_1, v_2) \to GolineAbs(p, v_1, v_2)}
+        \begin{split}
+    \frac{}{FollowSmart([(p,True):xs], contingency, v_1, v_2) \to}\\
+     Seq ( GolineAbs(p, v_1, v_2), FollowSmart(xs, contingency, v_1, v_2))
+        \end{split}
     \end{equation}
-    \begin{equation}
-\frac{}{FollowSmart([], contingency, v_1, v_2) \to Skip}
-\end{equation}
-    
+
 \begin{equation}
-\frac{}{FollowSmart([p], contingency, v_1, v_2) \to GolineAbs(p, v_1, v_2)}
+\frac{}{FollowSmart([(p,False):xs], contingency, v_1, v_2) \to Skip}
 \end{equation}
 
+\begin{equation}
+    \frac{isAllFalse(contingency)}{FollowSmart([(p,False):xs], contingency, v_1, v_2) \to FollowSmart(xs, [], v_1, v_2)}
+    \end{equation}
+
+    \begin{equation}
+        \frac{\neg isAllFalse(contingency)}{FollowSmart([(p,False):xs], contingency, v_1, v_2) \to
+        FollowSmart(contingency \mathop{+\!\!+} xs, contingency, v_1, v_2) } 
+        \end{equation}
+    
 
 \begin{equation}
 \begin{split}
-\frac{}{FollowSmart(((p,True):(q,b):xs), contingency, v_1, v_2) \to Seq(GolineAbs(p, v_1, v_2), } \\
-FollowSmart(((q_x - p_x, q_y - p_y), b):xs), contingency, v_1, v_2)
+\frac{def\_obstacles(ps,list) \downarrow xs}{FollowSmart(def\_obstacles(ps,list), contingency, v_1, v_2) \to FollowSmart(xs, contingency, v_1, v_2)}
 \end{split}
 \end{equation}
-    
-\begin{equation}
-    \begin{split}
-\frac{p \downarrow (p_x,p_y) , q \downarrow (q_x,q_y)}{FollowSmart(((p, False):(q,b):xs), [], v1, v2) \to} \\
-FollowSmart((((q_x - p_x, q_y - p_y), b):xs), [], v_1, v_2)
-    \end{split}
-\end{equation}
-    
-\begin{equation}
-    \begin{split}
-\frac{p \downarrow (p_x,p_y) , c \downarrow (c_x,c_y)}{FollowSmart((((p, False):xs), ((c,b):cs), v_1, v_2)) \to } \\
-FollowSmart((((c_x + p_x, c_y + p_y), b):cs \mathop{+\!\!+} xs), ((c,b):cs), v_1, v_2)
-    \end{split}
-\end{equation}
 
+\begin{equation}
+    \begin{split}
+    \frac{def\_obstacles(ps,list) \downarrow xs}{FollowSmart(listpoints, def\_obstacles(ps,list), v_1, v_2) \to FollowSmart(listpoints, xs, v_1, v_2)}
+    \end{split}
+    \end{equation}
+    
 \section{Posibles pr\'oximas versiones}
 
 En futuras versiones, MoviScript podr\'a tomar informaci\'on del medio con un sensor frontal del m\'movil. 
+Tambi\'en habr\'a posiblidad de almacenamiento de m\'as tipos de variables como las listas, los puntos y la lista de obstaculos.
 Tambi\'en se podr\'a compilar MoviScript a c\'odigo 
 $NQC$\footnote{Not Quite C es un lenguaje simple que sintaxis similar a C utilizado para programar 
 la \'inea rob\'otica de LEGO denominada Maindstorms. Para m\'as informaci\'on visitar la 
