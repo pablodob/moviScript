@@ -54,12 +54,12 @@ $$\textbf{ round ( } \textit{ expf , num } \textbf{ ) }
 
 Las expresiones booleanas se pueden relacionar con los siguientes operadores.
 
-$$\textbf{true} \text{ y } \textbf{false}\text{: Representan valores booleanos directos.}$$
-$$\textit{expf} < \textit{expf} \text{ y } \textit{expf} > \textit{expf}\text{: Permite comparaciones relacionales entre expresiones flotantes.}$$
-$$\textit{boolexp } \& \textit{ boolexp}\text{: Operador lógico AND para conjunción de expresiones booleanas.}$$
-$$\textit{boolexp } | \textit{ boolexp}\text{: Operador lógico OR para disyunción de expresiones booleanas.}$$
-$$\sim \textit{boolexp}\text{: Operador unario NOT para negación de una expresión booleana.}$$
-$$\textbf{(} \textit{ boolexp } \textbf{)}\text{: Permite agrupar expresiones booleanas para establecer el orden de evaluación.}$$
+* $true$ y $false$: Representan valores booleanos directos.
+* $expf < expf$ y $expf > expf$: Permite comparaciones relacionales entre expresiones flotantes.
+* $boolexp \And boolexp$: Operador lógico AND para conjunción de expresiones booleanas.
+* $boolexp  | boolexp$ : Operador lógico OR para disyunción de expresiones booleanas.
+* $\sim boolexp$: Operador unario NOT para negación de una expresión booleana.
+* $( boolexp )$: Permite agrupar expresiones booleanas para establecer el orden de evaluación.
 
 # Comandos básicos y de control de flujo
 

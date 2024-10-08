@@ -26,7 +26,7 @@ initState = ([],0.0, (Const 0.0, Const 0.0))
 newtype State a = State { runState :: Env -> Either Error (a, Env, String, String) }
 
 instance Monad State where
-    return x = State (\s -> Right (x, s, "", ""))
+    --return x = State (\s -> Right (x, s, "", ""))
     (>>=) :: State a -> (a -> State b) -> State b
     m >>= f = State (\s -> do (v, s', lg, p) <- runState m s
                               (v', s'', lg', p') <- runState (f v) s'
@@ -115,10 +115,11 @@ instance Functor State where
     fmap :: (a -> b) -> State a -> State b
     fmap = liftM
 
-
 instance Applicative State where
-    pure = return
+    --pure = return
+    pure x = State (\s -> Right (x, s, "", ""))
     (<*>) = ap
+    
 
 -- Evalua un programa en el estado nulo
 -- Matcheamos los errores UndefVar y DivByZero para tener un mensaje de error distinto en cada tipo de error
@@ -207,8 +208,6 @@ evalComm (Follow (Path exp v list) v1 v2) = do lp <- evalListPoint (Path exp v l
 
 
 evalComm (FollowSmart (LPointAllow []) contingency v1 v2) = evalComm Skip
--- Si queda un solo punto en el camino y no esta obstaculizado va hacia el punto
--- evalComm (FollowSmart (LPointAllow [(p,True)]) contingency v1 v2) = evalComm (GolineAbs p v1 v2)
 -- Si quedan mas de 1 punto y no esta obstaculizado va hacia el punto y continua el camino
 evalComm (FollowSmart (LPointAllow ((p,True):xs)) contingency v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (FollowSmart (LPointAllow xs) contingency v1 v2))
 -- Si esta obstaculizado y no tiene camino de contingencia se saltea el punto y va al siguiente
