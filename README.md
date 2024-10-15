@@ -9,15 +9,23 @@ Finalmente, para la evaluación semántica del DSL, se recurre a un evaluador mo
 
 # Manual de uso
 
-El lenguaje Movi esta embebido en Haskell por lo que para compilar el lenguaje MoviScript se deberá tener instalado un compilador de Haskell.
-También es necesario tener instalado el programa ucblogo para poder ejecutar el script en logo con el que se evalua el programa. Para hacer estas intalaciones se puede ejecutar en una distribucion Debian o Ubuntu el siguiente comando:
+El lenguaje Movi esta embebido en **Haskell** por lo que para compilar el lenguaje **MoviScript** se deberá tener instalado un compilador de Haskell.
+También es necesario tener instalado el programa **ucblogo** para poder ejecutar el script en logo con el que se evalua el programa. Para hacer estas intalaciones se puede ejecutar en una distribucion Debian o Ubuntu el siguiente comando:
+Para hacer estas intalaciones se puede ejecutar en una distribucion Debian o Ubuntu el siguiente comando:
 
 ``` {.bash language="bash"}
+apt-get update
 apt-get install ghci
-    apt-get install ucblogo
+apt-get install ucblogo
 ```
 
-Para ejecutar un programa MoviScript se debe ejecutar el script movi.sh en la misma carpeta en la que se encuentran los archivos movi.sh, Main.hs, Parser.hs y EvalMovi.hs:
+Además, es necesario instalar **Python** y la biblioteca **Matplotlib** para ver los puntos de la traza.
+``` {.bash language="bash"}
+apt-get install python3 python3-pip
+pip3 install matplotlib 
+```
+
+Para ejecutar un programa **MoviScript** se debe ejecutar el script movi.sh en la misma carpeta en la que se encuentran los archivos movi.sh, Main.hs, Parser.hs y EvalMovi.hs:
 
 ``` {.bash language="bash"}
 ./movi.sh <ruta-del-programa>/miPrograma.movi 
@@ -111,6 +119,15 @@ donde $x_i$ indica la lista de puntos en los que el móvil esta obstaculizado po
 
 # Semántica de los comandos
 
+**Fd**
+
+$$\frac{p \downarrow (p_x,p_y)}
+{\left( \text{Fd}( d , v ), \sigma(\theta_{\text{old}} , p) \right) \to \left( \text{Skip}, \sigma (\theta_{\text{old}} , \left( p_x + d \cdot \cos\left( \frac{\theta \cdot \pi}{180.0} \right), p_y + d \cdot \sin\left( \frac{\theta \cdot \pi}{180.0} \right) \right)) \right)}$$
+
+**Turn**
+
+$$\frac{}{\left( \text{Turn}(\theta, v), \sigma(\theta_{\text{old}}) \right) \to \left( \text{Skip}, \sigma (\theta_{\text{old}} + \theta) \right)}$$
+
 **Lookat**
 $$\frac{p \downarrow (p_x,p_y)}{Lookat(p, v) \to Turn( \frac{180} {\pi} * atan^2(p_x, p_y) , v)}$$
 
@@ -153,6 +170,10 @@ $$\begin{split}
 $$\begin{split}
     \frac{def\_obstacles(ps,list) \downarrow xs}{FollowSmart(listpoints, def\_obstacles(ps,list), v_1, v_2) \to FollowSmart(listpoints, xs, v_1, v_2)}
     \end{split}$$
+
+**isAllFalse**
+$$\frac{}{ \text{isAllFalse} \ ([ ]) \to \text{True} }$$
+$$\frac{}{ \text{isAllFalse} \ ((x, b) : xs) \to \neg b \wedge \text{isAllFalse}(xs) }$$
 
 # Posibles próximas versiones
 

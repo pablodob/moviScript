@@ -26,7 +26,7 @@ initState = ([],0.0, (Const 0.0, Const 0.0))
 newtype State a = State { runState :: Env -> Either Error (a, Env, String, String) }
 
 instance Monad State where
-    --return x = State (\s -> Right (x, s, "", ""))
+    return = pure
     (>>=) :: State a -> (a -> State b) -> State b
     m >>= f = State (\s -> do (v, s', lg, p) <- runState m s
                               (v', s'', lg', p') <- runState (f v) s'
@@ -116,7 +116,6 @@ instance Functor State where
     fmap = liftM
 
 instance Applicative State where
-    --pure = return
     pure x = State (\s -> Right (x, s, "", ""))
     (<*>) = ap
     
@@ -166,19 +165,20 @@ evalComm (Fd time vel)      = do v <- evalFloatExp vel
                                  dx <- evalFloatExp (fst destpoint)
                                  dy <- evalFloatExp (snd destpoint)
                                  
-                                 trace ("Forward | Vel: " ++ show v ++ " | Time: " ++ show t ++ " | Dist: " ++ show (v*t) ++ "\n")
-                                 trace ("Point: ( " ++ show dx ++ " , " ++ show dy ++ " )\n")
+                                 --trace ("Forward | Vel: " ++ show v ++ " | Time: " ++ show t ++ " | Dist: " ++ show (v*t) ++ "\n")
+                                 --trace ("Point: ( " ++ show dx ++ " , " ++ show dy ++ " )\n")
+                                 trace (" ( " ++ show dx ++ " , " ++ show dy ++ " ) , \n")
                                  logo "fd" (v*25) t
 
 evalComm (Turn time vel) = do v <- evalFloatExp vel
                               t <- evalFloatExp time
-                              trace ("Turn | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
+                              --trace ("Turn | Vel: " ++ show v ++ " | Time: " ++ show t ++ "\n")
                               logo "rt" (-v) t
                               angle <- getAngle
-                              trace ("Angle: " ++ show angle ++ "\n")
+                              --trace ("Angle: " ++ show angle ++ "\n")
                               addAngle (v*t)
-                              angle <- getAngle
-                              trace ("Angle: " ++ show angle ++ "\n")
+                              --angle <- getAngle
+                              --trace ("Angle: " ++ show angle ++ "\n")
 
 evalComm (TurnAbs ang vel) = do angAct <- getAngle
                                 v <- evalFloatExp vel
@@ -198,7 +198,7 @@ evalComm (GolineAbs p v1 v2)  = do currentpoint <- getPoint
                                    
                                    v2d <- evalFloatExp v2
                                    dist <- evalFloatExp (Dist (Const qx, Const qy))
-                                   trace ("GolineAbs | qx: " ++ show qx ++ " | qy: " ++ show qy ++ "\n")
+                                   --trace ("GolineAbs | qx: " ++ show qx ++ " | qy: " ++ show qy ++ "\n")
                                    evalComm (Seq (TurnAbs (180 / pi * atan2 qy qx) v1) (Fd (Const (dist/v2d)) v2))
 
 evalComm (Follow (LPoint []) v1 v2) = evalComm Skip
@@ -215,7 +215,8 @@ evalComm (FollowSmart (LPointAllow ((p,False):xs)) (LPointAllow []) v1 v2) = eva
 -- Si esta obstaculizado y es el ultimo punto del camino termina
 evalComm (FollowSmart (LPointAllow [(p,False)]) contingency v1 v2) = evalComm Skip
 -- Si esta obstaculizado y no es el ultimo punto del camino toma el camino de contingencia
-evalComm (FollowSmart (LPointAllow ((p,False):xs)) contingency v1 v2) = if isAllFalse contingency then evalComm (FollowSmart (LPointAllow xs) (LPointAllow []) v1 v2) else evalComm (FollowSmart (lConcat (trasformList p contingency) (LPointAllow xs)) contingency v1 v2)
+evalComm (FollowSmart (LPointAllow ((p,False):xs)) contingency v1 v2) = do q <- getPoint
+                                                                           if isAllFalse contingency then evalComm (FollowSmart (LPointAllow xs) (LPointAllow []) v1 v2) else evalComm (FollowSmart (lConcat (trasformList q contingency) (LPointAllow xs)) contingency v1 v2)
 evalComm (FollowSmart (Obs (LPoint lpoint) list) lpa v1 v2) = evalComm (FollowSmart (transformObs (Obs (LPoint lpoint) list)) lpa v1 v2)
 evalComm (FollowSmart lpa (Obs (LPoint lpoint) list) v1 v2) = evalComm (FollowSmart lpa (transformObs (Obs (LPoint lpoint) list)) v1 v2)
 
