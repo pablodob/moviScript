@@ -113,67 +113,14 @@ $$\textbf{goline(}point , vel-lineal , vel-angular \textbf{)}$$ Con el comando $
 
 $$\textbf{follow(}listpoint , vel-lineal , vel-angular \textbf{)}$$ Con el comando $follow$ se indica que el móvil haga un recorrido determinado por la lista de puntos ($listpoint = [(x_1,y_1),(x_2,y_2)...(x_n,y_n)]$). La velocidad de giro será la indicada como $vel-angular$ y la velocidad de desplazamiento será la indicada como $vel-lienal$. Los puntos del camino están en
 relación a al punto de referencia que es el móvil al momento de iniciarse la ejecución del programa.
-$$\textbf{followsmart(}listpoint-allow , listpoint-contingency-allow , vel-lineal , vel-angular \textbf{)}$$
+$$\textbf{followsmart(}listpoint-allow , listpoint-contingency , vel-lineal , vel-angular \textbf{)}$$
 De igual manera que el comando $follow$, el comando $followsmart$ indica que el móvil haga un recorrido determinado por la lista de puntos seguido de las posiciones en las que estará habilitado el móvil para circular. La lista de puntos-contingency será la lista de puntos ($listpoint-allow = def\_obstacles [(x_1,y_1),(x_2,y_2)...(x_n,y_n)], [x_1 ... x_i ... x_n]$)
-donde $x_i$ indica la lista de puntos en los que el móvil esta obstaculizado por el medio para ciruclar. En este caso, el comando $followsmart$ incorpora información del medio. Lo hace mediante la lista de puntos que en este caso será una lista de índices en los que los puntos obstaculizados por el medio. Si el móvil intentar circular por una parte del camino que está impedido por algún obstaculo el lenguaje MoviScript tendrá un camino de contingencia. Al igual que en el caso de $follow$, los puntos del camino están en relación a al punto de referencia que es el móvil al momento de iniciarse la ejecución del programa. Sin embargo, la lista de contingencia es relativa al último punto antes de encontrarse un obstaculo y se utilizará como contingencia de forma recursiva, de forma de que si hay obstaculos abordando el camino de contingencia el móvil también utilizará el camino de contingencia.
+donde $x_i$ indica la lista de puntos en los que el móvil esta obstaculizado por el medio para ciruclar.
+En este caso, el comando $followsmart$ incorpora información del medio. Lo hace mediante la lista de puntos que en este caso será una lista de índices en los que los puntos obstaculizados por el medio.
+Si el móvil intentar circular por una parte del camino que está impedido por algún obstaculo el lenguaje MoviScript tendrá un camino de contingencia. Al igual que en el caso de $follow$, los puntos del camino están en relación a al punto de referencia que es el móvil al momento de iniciarse la ejecución del programa. Sin embargo, la lista de contingencia es relativa al último punto antes de encontrarse un obstaculo.
 
 # Semántica de los comandos
-
-**Fd**
-
-$$\frac{p \downarrow (p_x,p_y)}
-{\left( \text{Fd}( d , v ), \sigma(\theta_{\text{old}} , p) \right) \to \left( \text{Skip}, \sigma (\theta_{\text{old}} , \left( p_x + d \cdot \cos\left( \frac{\theta \cdot \pi}{180.0} \right), p_y + d \cdot \sin\left( \frac{\theta \cdot \pi}{180.0} \right) \right)) \right)}$$
-
-**Turn**
-
-$$\frac{}{\left( \text{Turn}(\theta, v), \sigma(\theta_{\text{old}}) \right) \to \left( \text{Skip}, \sigma (\theta_{\text{old}} + \theta) \right)}$$
-
-**Lookat**
-$$\frac{p \downarrow (p_x,p_y)}{Lookat(p, v) \to Turn( \frac{180} {\pi} * atan^2(p_x, p_y) , v)}$$
-
-**Goline**
-$$\frac{p \downarrow dist}{Goline (p,v_1,v_2) \to Seq( Lookat(p, v_1) , Fd (\frac{dist}{v_2}, v_2)}$$
-
-**TurnAbs**
-$$\frac{}{TurnAbs(ang, vel) \to Turn\left(\left(\frac{ang - angAct}{v}\right), vel\right)}$$
-
-**GolineAbs**
-$$\frac{}{ GolineAbs((p_x,p_y), v_1, v_2) \to Seq (TurnAbs \left(\frac{180}{\pi} \cdot atan2 (p_y, p_x)\right) \ v_1, Fd(\frac{dist}{v_2}), v_2)}$$
-
-**Follow** $$\frac{}{Follow([], v_1, v_2) \to Skip}$$
-
-$$\frac{}{Follow([p], v_1, v_2) \to GolineAbs(p, v_1, v_2)}$$
-
-$$\frac{}{Follow(p:ps, v_1, v_2) \to {Seq(GolineAbs(p, v_1, v_2), Follow(ps, v_1, v_2))}}$$
-
-$$\frac{Path (exp,v, list) \downarrow xs}{Follow(Path (exp,v, list), v_1, v_2) \to {Follow(xs, v_1, v_2)}}$$
-
-**Followsmart**
-$$\frac{}{FollowSmart([], contingency, v_1, v_2) \to Skip}$$
-
-$$\begin{split}
-    \frac{}{FollowSmart([(p,True):xs], contingency, v_1, v_2) \to}\\
-     Seq ( GolineAbs(p, v_1, v_2), FollowSmart(xs, contingency, v_1, v_2))
-        \end{split}$$
-
-$$\frac{}{FollowSmart([(p,False):xs], contingency, v_1, v_2) \to Skip}$$
-
-$$\frac{isAllFalse(contingency)}{FollowSmart([(p,False):xs], contingency, v_1, v_2) \to FollowSmart(xs, [], v_1, v_2)}$$
-
-$$\frac{\neg isAllFalse(contingency)}{FollowSmart([(p,False):xs], contingency, v_1, v_2) \to
-        FollowSmart(contingency \mathop{+\!\!+} xs, contingency, v_1, v_2) }$$
-
-$$\begin{split}
-\frac{def\_obstacles(ps,list) \downarrow xs}{FollowSmart(def\_obstacles(ps,list), contingency, v_1, v_2) \to FollowSmart(xs, contingency, v_1, v_2)}
-\end{split}$$
-
-$$\begin{split}
-    \frac{def\_obstacles(ps,list) \downarrow xs}{FollowSmart(listpoints, def\_obstacles(ps,list), v_1, v_2) \to FollowSmart(listpoints, xs, v_1, v_2)}
-    \end{split}$$
-
-**isAllFalse**
-$$\frac{}{ \text{isAllFalse} \ ([ ]) \to \text{True} }$$
-$$\frac{}{ \text{isAllFalse} \ ((x, b) : xs) \to \neg b \wedge \text{isAllFalse}(xs) }$$
+Para más información se puede consultar la semántica de los comandos en el PDF de documentación adjunto.
 
 # Posibles próximas versiones
 

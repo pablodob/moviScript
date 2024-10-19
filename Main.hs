@@ -42,7 +42,7 @@ run ifile =
                                              ++ "   plt.text(xi, yi, str(i), fontsize=9, ha='right', va='bottom')\n"
                                              ++ "plt.plot(x, y, color='red', marker='o')\n"
                                              ++ "plt.grid(True)\n"
-                                             ++ "plt.show()()\n")
+                                             ++ "plt.show()\n")
                         exitCode <- system "python3 eval.py"                 
                         putStrLn "------------ Logo ------------"
                         writeFile "eval.logo" ("rt 90\n" ++ two (eval t))

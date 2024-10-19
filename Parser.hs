@@ -351,7 +351,7 @@ comm4 = try (do reserved movi "lookat"
                     reservedOp movi "("
                     list <- obstacle
                     reservedOp movi ","
-                    listcontingency <- obstacle
+                    listcontingency <- listpoint
                     reservedOp movi ","
                     v1 <- floatexp
                     reservedOp movi ","

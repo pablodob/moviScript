@@ -118,7 +118,7 @@ instance Functor State where
 instance Applicative State where
     pure x = State (\s -> Right (x, s, "", ""))
     (<*>) = ap
-    
+
 
 -- Evalua un programa en el estado nulo
 -- Matcheamos los errores UndefVar y DivByZero para tener un mensaje de error distinto en cada tipo de error
@@ -157,14 +157,14 @@ evalComm (Fd time vel)      = do v <- evalFloatExp vel
                                  angle <- getAngle
                                  current_px <- evalFloatExp (fst currentpoint)
                                  current_py <- evalFloatExp (snd currentpoint)
-                                
+
                                  putPoint (Const (current_px + v * t * cos (angle * pi / 180.0)), Const (current_py + v * t * sin (angle * pi / 180.0)))
-                                 
+
                                  -- Calcualamos la nueva posicion para la traza
                                  destpoint <- getPoint
                                  dx <- evalFloatExp (fst destpoint)
                                  dy <- evalFloatExp (snd destpoint)
-                                 
+
                                  --trace ("Forward | Vel: " ++ show v ++ " | Time: " ++ show t ++ " | Dist: " ++ show (v*t) ++ "\n")
                                  --trace ("Point: ( " ++ show dx ++ " , " ++ show dy ++ " )\n")
                                  trace (" ( " ++ show dx ++ " , " ++ show dy ++ " ) , \n")
@@ -195,7 +195,7 @@ evalComm (Goline p v1 v2)  = do dist <- evalFloatExp (Dist p)
 evalComm (GolineAbs p v1 v2)  = do currentpoint <- getPoint
                                    qx <- evalFloatExp (Minus (fst p) (fst currentpoint))
                                    qy <- evalFloatExp (Minus (snd p) (snd currentpoint))
-                                   
+
                                    v2d <- evalFloatExp v2
                                    dist <- evalFloatExp (Dist (Const qx, Const qy))
                                    --trace ("GolineAbs | qx: " ++ show qx ++ " | qy: " ++ show qy ++ "\n")
@@ -211,20 +211,25 @@ evalComm (FollowSmart (LPointAllow []) contingency v1 v2) = evalComm Skip
 -- Si quedan mas de 1 punto y no esta obstaculizado va hacia el punto y continua el camino
 evalComm (FollowSmart (LPointAllow ((p,True):xs)) contingency v1 v2) = evalComm (Seq (GolineAbs p v1 v2) (FollowSmart (LPointAllow xs) contingency v1 v2))
 -- Si esta obstaculizado y no tiene camino de contingencia se saltea el punto y va al siguiente
-evalComm (FollowSmart (LPointAllow ((p,False):xs)) (LPointAllow []) v1 v2) = evalComm (FollowSmart (LPointAllow xs) (LPointAllow []) v1 v2)
+evalComm (FollowSmart (LPointAllow ((p,False):xs)) (LPoint []) v1 v2) = evalComm (FollowSmart (LPointAllow xs) (LPoint []) v1 v2)
 -- Si esta obstaculizado y es el ultimo punto del camino termina
 evalComm (FollowSmart (LPointAllow [(p,False)]) contingency v1 v2) = evalComm Skip
 -- Si esta obstaculizado y no es el ultimo punto del camino toma el camino de contingencia
-evalComm (FollowSmart (LPointAllow ((p,False):xs)) contingency v1 v2) = do q <- getPoint
-                                                                           if isAllFalse contingency then evalComm (FollowSmart (LPointAllow xs) (LPointAllow []) v1 v2) else evalComm (FollowSmart (lConcat (trasformList q contingency) (LPointAllow xs)) contingency v1 v2)
+evalComm (FollowSmart (LPointAllow ((p,False):xs)) ys v1 v2) = do q <- getPoint
+                                                                  lp <- trasformList q ys
+                                                                  if isAllFalse (LPointAllow xs) then evalComm Skip 
+                                                                  else evalComm (FollowSmart (lConcat lp (LPointAllow xs)) ys v1 v2)
 evalComm (FollowSmart (Obs (LPoint lpoint) list) lpa v1 v2) = evalComm (FollowSmart (transformObs (Obs (LPoint lpoint) list)) lpa v1 v2)
-evalComm (FollowSmart lpa (Obs (LPoint lpoint) list) v1 v2) = evalComm (FollowSmart lpa (transformObs (Obs (LPoint lpoint) list)) v1 v2)
+evalComm (FollowSmart lpa (Path exp v xs) v1 v2) = do lp <- evalListPoint (Path exp v xs)
+                                                      evalComm (FollowSmart lpa lp v1 v2)
 
 -- Transforma una lista en posiciones relativas al movil a una lista en posiciones reales
-trasformList :: Point -> Obstacle -> Obstacle
-trasformList p (Obs (LPoint lpoint) list) = trasformList p (transformObs (Obs (LPoint lpoint) list))
-trasformList p (LPointAllow []) = LPointAllow []
-trasformList p (LPointAllow ((x,b):xs)) = LPointAllow (((Plus (fst x) (fst p), Plus (snd x) (snd p)),b):xs)
+trasformList :: (MonadState m, MonadError m, MonadTrace m, MonadLogo m) => Point -> ListPoint -> m ListPoint
+trasformList p (Path exp v xs) = do lp <- evalListPoint (Path exp v xs)
+                                    trasformList p lp
+trasformList p (LPoint []) = return (LPoint [])
+trasformList p (LPoint (x:xs)) = do lp <- trasformList p (LPoint xs) 
+                                    return (consListPoint (Plus (fst x) (fst p), Plus (snd x) (snd p)) lp)
 
 -- Funciones auxiliares
 isAllFalse :: Obstacle -> Bool
@@ -232,15 +237,15 @@ isAllFalse (LPointAllow []) = True
 isAllFalse (LPointAllow ((x,b):xs)) = not b && isAllFalse (LPointAllow xs)
 isAllFalse (Obs (LPoint lpoint) list) = isAllFalse (transformObs (Obs (LPoint lpoint) list))
 
-lConcat :: Obstacle -> Obstacle -> Obstacle
-lConcat (LPointAllow xs) (LPointAllow ys) = LPointAllow (xs++ys)
+lConcat :: ListPoint -> Obstacle -> Obstacle
+lConcat (LPoint ys) (LPointAllow xs) = LPointAllow ([(point, True) | point <- ys]++xs)
 
 consListPoint :: Point -> ListPoint -> ListPoint
 consListPoint x (LPoint xs) = LPoint (x : xs)
 
 -- Transforma una lista de puntos a una lista de obstaculos con pares ordenados
 transformObs :: Obstacle -> Obstacle
-transformObs (Obs (LPoint lpoint) list) = LPointAllow [(point, not(i `elem` list)) | (point , i) <- zip lpoint [0..]]
+transformObs (Obs (LPoint lpoint) list) = LPointAllow [(point, not (i `elem` list)) | (point , i) <- zip lpoint [0..]]
 transformObs (LPointAllow [xsAlow]) = LPointAllow [xsAlow]
 
 -- Evalua ListPoint

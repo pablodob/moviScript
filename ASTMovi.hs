@@ -66,5 +66,5 @@ data Comm = Skip
           | LookatAbs Point Vel
           | GolineAbs Point Vel Vel
           | Follow ListPoint Vel Vel 
-          | FollowSmart Obstacle Obstacle Vel Vel
+          | FollowSmart Obstacle ListPoint Vel Vel
  deriving Show
