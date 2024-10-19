@@ -1,0 +1,12 @@
+step := 1.0;
+i := 0.0;
+
+while (i < 18.0)
+do
+fd (step,1.0);
+turn(90.0 , 1.0);
+step := step + 1.0;
+i := i + 1.0;
+end
+
+end
